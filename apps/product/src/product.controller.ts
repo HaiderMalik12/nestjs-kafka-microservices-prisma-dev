@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
+import * as PayloadType from '@app/kafka/interfaces/product-create-event';
 
 @Controller()
 export class ProductController {
@@ -12,7 +13,7 @@ export class ProductController {
   }
 
   @MessagePattern('product.created')
-  handleProductCreatedMessage(@Payload() payload: any) {
+  handleProductCreatedMessage(@Payload() payload: PayloadType.ProductCreatedEvent) {
     console.log('Received product.created event:', payload);
     // Here you can add logic to handle the created product event
   }
