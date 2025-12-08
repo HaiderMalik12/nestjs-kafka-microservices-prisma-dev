@@ -33,6 +33,12 @@
       ],
       "y/common/*": [
         "libs/common/src/*"
+      ],
+      "y/prisma": [
+        "libs/prisma/src"
+      ],
+      "y/prisma/*": [
+        "libs/prisma/src/*"
       ]
     }
   }

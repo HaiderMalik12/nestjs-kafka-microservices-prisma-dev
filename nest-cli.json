@@ -64,6 +64,15 @@
         "tsConfigPath": "apps/payment/tsconfig.app.json"
       }
     },
+    "prisma": {
+      "type": "library",
+      "root": "libs/prisma",
+      "entryFile": "index",
+      "sourceRoot": "libs/prisma/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/prisma/tsconfig.lib.json"
+      }
+    },
     "product": {
       "type": "application",
       "root": "apps/product",
