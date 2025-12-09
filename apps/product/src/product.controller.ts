@@ -1,7 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import * as PayloadType from '@app/kafka/interfaces/product-create-event';
+import type {ProductCreatedEvent} from '@app/kafka/interfaces/product-create-event';
+import type {ProductUpdatedEvent} from '@app/kafka/interfaces/product-update-event';
+import type {ProductDeletedEvent} from '@app/kafka/interfaces/product-delete-event';
 
 @Controller()
 export class ProductController {
@@ -12,15 +14,27 @@ export class ProductController {
     return this.productService.getHello();
   }
 
-  @MessagePattern('product.created')
-  handleProductCreatedMessage(@Payload() payload: PayloadType.ProductCreatedEvent) {
+   @MessagePattern('product.created')
+  async handleProductCreatedMessage(
+    @Payload() payload: ProductCreatedEvent,
+  ) {
     console.log('Received product.created event:', payload);
-    // Here you can add logic to handle the created product event
+    return this.productService.handleProductCreated(payload);
   }
 
   @MessagePattern('product.updated')
-  handleProductUpdatedMessage(@Payload() payload: any) {
+  async handleProductUpdatedMessage(
+    @Payload() payload: ProductUpdatedEvent,
+  ) {
     console.log('Received product.updated event:', payload);
-    // Here you can add logic to handle the updated product event
+    return this.productService.handleProductUpdated(payload);
+  }
+
+  @MessagePattern('product.deleted')
+  async handleProductDeletedMessage(
+    @Payload() payload: ProductDeletedEvent,
+  ) {
+    console.log('Received product.deleted event:', payload);
+    return this.productService.handleProductDeleted(payload.id);
   }
 }

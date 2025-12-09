@@ -1,6 +1,7 @@
-import { Body, Controller, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Param, Post, Put } from '@nestjs/common';
 import { ProductProducerService } from './product-producer.service';
 import { CreateProductDto } from '../dto/create-product.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
 
 @Controller('products')
 export class ProductProducerController {
@@ -15,13 +16,28 @@ export class ProductProducerController {
     }
 
     @Put(':id')
-    async updateProduct() {
-        const product = {
-            id: Math.floor(Math.random() * 1000),
-            name: 'Sample Product',
-            price: parseFloat((Math.random() * 100).toFixed(2)),
-        };
-        await this.productProducerService.emitProductUpdatedEvent(product);
-        return { message: 'Product update event emitted', product: product };
-    }
+  async updateProduct(
+    @Param('id') id: string,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    await this.productProducerService.emitProductUpdatedEvent(
+      Number(id),
+      updateProductDto,
+    );
+    return {
+      message: 'Product updated event emitted',
+      product: { id: Number(id), ...updateProductDto },
+    };
+  }
+
+ @Delete(':id')
+  async deleteProduct(@Param('id') id: string) {
+    await this.productProducerService.emitProductDeletedEvent(
+      Number(id),
+    );
+    return {
+      message: 'Product deleted event emitted',
+      id: Number(id),
+    };
+  }
 }

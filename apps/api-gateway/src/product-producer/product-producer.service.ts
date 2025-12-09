@@ -1,6 +1,8 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { CreateProductDto } from '../dto/create-product.dto';
-import { ProductCreatedEvent } from '@app/kafka/interfaces/product-create-event';
+import { ProductCreatedEvent,  } from '@app/kafka/interfaces/product-create-event';
+import { ProductUpdatedEvent } from '@app/kafka/interfaces/product-update-event';
+import { ProductDeletedEvent } from '@app/kafka/interfaces/product-delete-event';
 
 @Injectable()
 export class ProductProducerService implements OnModuleInit {
@@ -21,12 +23,20 @@ export class ProductProducerService implements OnModuleInit {
         await this.kafkaClient.emit('product.created', event);
     } 
     
-    // EXERCISE FOR STUDENTS TO IMPLEMENT UPDATE EVENT
-    async emitProductUpdatedEvent(product: {id: number, name: string, price: number}) {
-        await this.kafkaClient.emit('product.updated', {
-            ...product,
-            updatedAt: new Date().toISOString()
-        });
+    async emitProductUpdatedEvent(id: number, update: Partial<CreateProductDto>) {
+        const event: ProductUpdatedEvent = {
+      id,
+      ...update,
+    };
+        await this.kafkaClient.emit('product.updated', event);
     }
+
+    async emitProductDeletedEvent(id: number) {
+    const event: ProductDeletedEvent = {
+        id,
+    };
+
+    await this.kafkaClient.emit('product.deleted', event);
+  }
 
 }

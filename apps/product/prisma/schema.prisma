@@ -18,5 +18,6 @@ model Product {
   name        String
   price       Float
   description String?
+  stock  Int?
   createdAt   DateTime @default(now())
 }
