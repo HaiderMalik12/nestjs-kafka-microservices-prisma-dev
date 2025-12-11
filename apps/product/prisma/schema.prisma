@@ -4,20 +4,24 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// AFTER (Standard output - Recommended)
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
+  // REMOVE the 'output' field entirely
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Product {
   id          Int      @id @default(autoincrement())
   name        String
-  price       Float
   description String?
-  stock  Int?
+  price       Float
+  stock       Int         @default(0)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
 }
