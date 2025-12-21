@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
+import { PrismaService } from './prisma/prisma.service';
 
 describe('OrderController', () => {
   let orderController: OrderController;
@@ -8,7 +9,23 @@ describe('OrderController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [OrderController],
-      providers: [OrderService],
+      providers: [
+        OrderService,
+        {
+          provide: PrismaService,
+          useValue: {
+            $transaction: jest.fn(),
+          },
+        },
+        {
+          provide: 'PRODUCT_SERVICE_CLIENT',
+          useValue: {
+            send: jest.fn(),
+            subscribeToResponseOf: jest.fn(),
+            connect: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     orderController = app.get<OrderController>(OrderController);

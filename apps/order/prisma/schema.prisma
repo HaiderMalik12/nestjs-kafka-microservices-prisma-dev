@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// AFTER (Standard output - Recommended)
+generator client {
+  provider = "prisma-client-js"
+  // REMOVE the 'output' field entirely
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  CREATED
+  CANCELLED
+}
+
+
+model Order {
+  id          String      @id @default(uuid())
+  status      OrderStatus @default(PENDING)
+
+  // Optional but useful: store order total snapshot
+  totalAmount Decimal?    @db.Decimal(10, 2)
+
+  // Relations
+  items       OrderItem[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model OrderItem {
+  id                 String   @id @default(uuid())
+
+  // Relations
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Product reference (we keep only the productId, not FK to another DB)
+  productId          String
+
+  quantity           Int      @default(1)
+
+  // Snapshots at order time (important for historical correctness)
+  unitPriceAtOrder   Decimal  @db.Decimal(10, 2)
+  productNameAtOrder String?  // optional for display without extra calls
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+
+  // Prevent duplicate product rows inside the same order
+  @@unique([orderId, productId])
+}

@@ -4,6 +4,8 @@ import { ApiGatewayService } from './api-gateway.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ProductProducerService } from './product-producer/product-producer.service';
 import { ProductProducerController } from './product-producer/product-producer.controller';
+import { OrderProducerService } from './order/order.service';
+import { OrderController } from './order/order.controller';
 
 @Module({
   imports: [
@@ -20,10 +22,23 @@ import { ProductProducerController } from './product-producer/product-producer.c
             groupId: 'product-consumer-group',
           },
         },  
-    }
+    },
+    {
+      name: 'KAFKA_ORDER_CLIENT',
+      transport: Transport.KAFKA,
+      options: {
+        client: {
+          clientId: 'api-gateway-order',
+          brokers: ['localhost:9092'],
+        },
+        consumer: {
+          groupId: 'order-producer-group',
+        },
+      },
+    },
     ])
   ],
-  controllers: [ApiGatewayController, ProductProducerController],
-  providers: [ApiGatewayService, ProductProducerService],
+  controllers: [ApiGatewayController, ProductProducerController, OrderController],
+  providers: [ApiGatewayService, ProductProducerService, OrderProducerService],
 })
 export class ApiGatewayModule {}

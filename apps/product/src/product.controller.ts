@@ -37,4 +37,13 @@ export class ProductController {
     console.log('Received product.deleted event:', payload);
     return this.productService.handleProductDeleted(payload.id);
   }
+
+  @MessagePattern('product.batchFetch')
+  async handleProductBatchFetch(@Payload() payload: { ids: number[] }) {
+    console.log('Received product.batchFetch request:', payload);
+    const ids = Array.from(new Set(payload?.ids ?? []))
+      .map((id) => Number(id))
+      .filter((id) => !Number.isNaN(id) && id > 0);
+    return this.productService.findByIds(ids);
+  }
 }
