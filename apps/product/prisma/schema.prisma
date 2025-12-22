@@ -7,7 +7,7 @@
 // AFTER (Standard output - Recommended)
 generator client {
   provider = "prisma-client-js"
-  // REMOVE the 'output' field entirely
+   output   = "../src/generated/prisma-client"
 }
 
 datasource db {

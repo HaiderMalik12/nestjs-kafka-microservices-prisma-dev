@@ -55,4 +55,6 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-/generated/prisma
+# Skip generate folder from order/src
+/apps/order/src/generated/
+/apps/product/src/generated

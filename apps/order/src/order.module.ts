@@ -2,11 +2,16 @@ import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
-import { PrismaModule } from './prisma/prisma.module';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaService } from './prisma.service';
 
 @Module({
   imports: [
-    PrismaModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'apps/order/.env',
+      ignoreEnvFile: false,
+    }),
     ClientsModule.register([
       {
         name: 'PRODUCT_SERVICE_CLIENT',
@@ -24,6 +29,6 @@ import { PrismaModule } from './prisma/prisma.module';
     ]),
   ],
   controllers: [OrderController],
-  providers: [OrderService],
+  providers: [OrderService, PrismaService],
 })
 export class OrderModule {}

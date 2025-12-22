@@ -1,9 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import type {ProductCreatedEvent} from '@app/kafka/interfaces/product-create-event';
-import type {ProductUpdatedEvent} from '@app/kafka/interfaces/product-update-event';
-import type {ProductDeletedEvent} from '@app/kafka/interfaces/product-delete-event';
+import type { ProductCreatedEvent } from '@app/kafka/interfaces/product-create-event';
+import type { ProductUpdatedEvent } from '@app/kafka/interfaces/product-update-event';
+import type { ProductDeletedEvent } from '@app/kafka/interfaces/product-delete-event';
 
 @Controller()
 export class ProductController {
@@ -14,26 +14,20 @@ export class ProductController {
     return this.productService.getHello();
   }
 
-   @MessagePattern('product.created')
-  async handleProductCreatedMessage(
-    @Payload() payload: ProductCreatedEvent,
-  ) {
+  @MessagePattern('product.created')
+  async handleProductCreatedMessage(@Payload() payload: ProductCreatedEvent) {
     console.log('Received product.created event:', payload);
     return this.productService.handleProductCreated(payload);
   }
 
   @MessagePattern('product.updated')
-  async handleProductUpdatedMessage(
-    @Payload() payload: ProductUpdatedEvent,
-  ) {
+  async handleProductUpdatedMessage(@Payload() payload: ProductUpdatedEvent) {
     console.log('Received product.updated event:', payload);
     return this.productService.handleProductUpdated(payload);
   }
 
   @MessagePattern('product.deleted')
-  async handleProductDeletedMessage(
-    @Payload() payload: ProductDeletedEvent,
-  ) {
+  async handleProductDeletedMessage(@Payload() payload: ProductDeletedEvent) {
     console.log('Received product.deleted event:', payload);
     return this.productService.handleProductDeleted(payload.id);
   }
@@ -45,5 +39,20 @@ export class ProductController {
       .map((id) => Number(id))
       .filter((id) => !Number.isNaN(id) && id > 0);
     return this.productService.findByIds(ids);
+  }
+
+  @MessagePattern('product.decrementStock')
+  async decrementStock(
+    @Payload() payload: { items: { productId: number; quantity: number }[] },
+  ) {
+    console.log('Received product.decrementStock request:', payload);
+    return this.productService.decrementStock(payload.items);
+  }
+
+  @MessagePattern('product.incrementStock')
+  async incrementStock(
+    @Payload() payload: { items: { productId: number; quantity: number }[] },
+  ) {
+    return this.productService.incrementStock(payload.items);
   }
 }
