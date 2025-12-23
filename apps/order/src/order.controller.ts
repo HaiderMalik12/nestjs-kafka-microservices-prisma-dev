@@ -12,12 +12,22 @@ export class OrderController {
   }
   @Get('health')
   health() {
-    return { status: 'ok', service: 'order', timestamp: new Date().toISOString() };
+    return {
+      status: 'ok',
+      service: 'order',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @MessagePattern('order.create')
   async createOrder(@Payload() payload: any) {
     console.log('Received order creation message:', payload);
     return this.orderService.createOrder(payload);
+  }
+
+  @MessagePattern('order.cancel')
+  async cancelOrder(@Payload() payload: { orderId: string; reason?: string }) {
+    console.log('Received order cancel message:', payload);
+    return this.orderService.cancelOrder(payload.orderId, payload.reason);
   }
 }

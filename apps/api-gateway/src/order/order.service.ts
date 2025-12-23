@@ -11,6 +11,7 @@ export class OrderProducerService implements OnModuleInit {
 
   async onModuleInit() {
     this.orderClient.subscribeToResponseOf('order.create');
+    this.orderClient.subscribeToResponseOf('order.cancel'); // ✅ add
     await this.orderClient.connect();
   }
 
@@ -19,6 +20,15 @@ export class OrderProducerService implements OnModuleInit {
       return firstValueFrom(this.orderClient.send('order.create', payload));
     } catch (error) {
       console.error('Error sending order creation message:', error);
+      throw error;
+    }
+  }
+
+  cancelOrder(payload: { orderId: string; reason?: string }) {
+    try {
+      return firstValueFrom(this.orderClient.send('order.cancel', payload));
+    } catch (error) {
+      console.error('Error sending order cancel message:', error);
       throw error;
     }
   }

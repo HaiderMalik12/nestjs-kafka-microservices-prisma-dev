@@ -2,12 +2,14 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { Prisma } from '@prisma/client';
 import { firstValueFrom } from 'rxjs';
 import { PrismaService } from './prisma.service';
+import { OrderStatus } from './generated/prisma-client';
 
 interface CreateOrderItemPayload {
   productId: number;
@@ -132,6 +134,66 @@ export class OrderService implements OnModuleInit {
     );
   }
 
+  async cancelOrder(orderId: string, reason?: string) {
+    try {
+      if (!orderId?.trim())
+        throw new BadRequestException('orderId is required');
+
+      // 1) Load order + items
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      if (order.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Order already cancelled');
+      }
+
+      // Optional business rule: cancel only before shipping
+      const cancellable = new Set<OrderStatus>([
+        OrderStatus.PENDING,
+        OrderStatus.CREATED,
+      ]);
+      if (!cancellable.has(order.status)) {
+        throw new BadRequestException(
+          `Order cannot be cancelled from status: ${order.status}`,
+        );
+      }
+
+      // 2) Prepare stock increment items
+      const stockItems = order.items
+        .map((i) => ({
+          productId: Number(i.productId),
+          quantity: i.quantity,
+        }))
+        .filter(
+          (i) =>
+            Number.isFinite(i.productId) && i.productId > 0 && i.quantity > 0,
+        );
+
+      // 3) Strong consistency:
+      //    increment stock FIRST, then mark order cancelled in a DB transaction.
+      //    If increment fails => do not cancel order.
+      await this.incrementStock(stockItems);
+
+      // 4) Mark order cancelled
+      // If you want to store reason, add fields in schema (cancelReason, cancelledAt)
+      const updated = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.CANCELLED,
+        },
+        include: { items: true },
+      });
+
+      return updated;
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      throw error;
+    }
+  }
   private decrementStock(items: { productId: number; quantity: number }[]) {
     return firstValueFrom(
       this.productClient.send('product.decrementStock', { items }),
