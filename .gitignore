@@ -58,3 +58,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Skip generate folder from order/src
 /apps/order/src/generated/
 /apps/product/src/generated
+/apps/payment/src/generated
