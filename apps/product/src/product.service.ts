@@ -81,54 +81,17 @@ export class ProductService {
 
   async decrementStock(items: { productId: number; quantity: number }[]) {
     try {
-      const normalized = this.normalizeItems(items);
-      if (normalized.length === 0) {
-        throw new BadRequestException('No items to decrement.');
-      }
-
-      return this.prisma.$transaction(async (tx) => {
-        const ids = normalized.map((i) => i.productId);
-
-        // 1️⃣ Ensure all products exist
-        const products = await tx.product.findMany({
-          where: { id: { in: ids } },
-          select: { id: true, stock: true },
+      for (const item of items) {
+        await this.prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              decrement: item.quantity,
+            },
+          },
         });
-
-        const found = new Set(products.map((p) => p.id));
-        console.log('Products found for decrement:', products);
-        const missing = ids.filter((id) => !found.has(id));
-        if (missing.length) {
-          throw new BadRequestException(
-            `Products not found: ${missing.join(', ')}`,
-          );
-        }
-
-        // 2️⃣ Atomic decrement (prevents negative stock)
-        for (const it of normalized) {
-          const res = await tx.product.updateMany({
-            where: {
-              id: it.productId,
-              stock: { gte: it.quantity },
-            },
-            data: {
-              stock: { decrement: it.quantity },
-            },
-          });
-
-          console.log(
-            `Decremented stock for productId=${it.productId}, quantity=${it.quantity}, affectedRows=${res.count}`,
-          );
-
-          if (res.count !== 1) {
-            throw new BadRequestException(
-              `Insufficient stock for productId=${it.productId}`,
-            );
-          }
-        }
-
-        return { ok: true };
-      });
+      }
+      return { message: 'Stock decremented successfully' };
     } catch (error) {
       console.error('Error decrementing stock:', error);
       throw error;
@@ -136,18 +99,22 @@ export class ProductService {
   }
 
   async incrementStock(items: { productId: number; quantity: number }[]) {
-    const normalized = this.normalizeItems(items);
-    if (normalized.length === 0) return { ok: true };
-
-    return this.prisma.$transaction(async (tx) => {
-      for (const it of normalized) {
-        await tx.product.update({
-          where: { id: it.productId },
-          data: { stock: { increment: it.quantity } },
+    try {
+      for (const item of items) {
+        await this.prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              increment: item.quantity,
+            },
+          },
         });
       }
-      return { ok: true };
-    });
+      return { message: 'Stock incremented successfully' };
+    } catch (error) {
+      console.error('Error incrementing stock:', error);
+      throw error;
+    }
   }
 
   private normalizeItems(items: { productId: number; quantity: number }[]) {

@@ -26,6 +26,18 @@ import { PrismaService } from './prisma.service';
           },
         },
       },
+      {
+        name: 'ORDER_EVENTS_CLIENT',
+        transport: Transport.KAFKA,
+        options: {
+          client: {
+            clientId: 'order-service-events-producer',
+            brokers: ['localhost:9092'],
+          },
+          // We only emit events – no replies expected
+          producerOnlyMode: true,
+        },
+      },
     ]),
   ],
   controllers: [OrderController],

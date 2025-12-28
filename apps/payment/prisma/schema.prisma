@@ -35,6 +35,9 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([orderId])
+  // 🔹 Query patterns:
+  // - We often look up by orderId (1 payment per order) → make it UNIQUE
+  // - We often filter by status (PENDING / SUCCESS / FAILED) → keep an index
+  @@unique([orderId])
   @@index([status])
 }

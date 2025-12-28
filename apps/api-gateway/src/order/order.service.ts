@@ -1,6 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { CreateOrderDto } from '../dto/create-order.dto';
 
 @Injectable()
@@ -16,20 +16,26 @@ export class OrderProducerService implements OnModuleInit {
   }
 
   createOrder(payload: CreateOrderDto) {
-    try {
-      return firstValueFrom(this.orderClient.send('order.create', payload));
-    } catch (error) {
-      console.error('Error sending order creation message:', error);
-      throw error;
-    }
+    return firstValueFrom(
+      this.orderClient.send('order.create', payload).pipe(
+        catchError((err) => {
+          console.error('Error in createOrder response:', err);
+          return throwError(
+            () => new Error('Failed to create order', err.message),
+          );
+        }),
+      ),
+    );
   }
 
   cancelOrder(payload: { orderId: string; reason?: string }) {
-    try {
-      return firstValueFrom(this.orderClient.send('order.cancel', payload));
-    } catch (error) {
-      console.error('Error sending order cancel message:', error);
-      throw error;
-    }
+    return firstValueFrom(
+      this.orderClient.send('order.cancel', payload).pipe(
+        catchError((err) => {
+          console.error('Error in cancelOrder response:', err);
+          return throwError(() => new Error('Failed to cancel order'));
+        }),
+      ),
+    );
   }
 }

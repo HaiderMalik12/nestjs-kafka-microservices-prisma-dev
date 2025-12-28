@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { Prisma } from '@prisma/client';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { PrismaService } from './prisma.service';
 import { OrderStatus } from './generated/prisma-client';
 
@@ -34,6 +34,8 @@ export class OrderService implements OnModuleInit {
     private readonly prisma: PrismaService,
     @Inject('PRODUCT_SERVICE_CLIENT')
     private readonly productClient: ClientKafka,
+    @Inject('ORDER_EVENTS_CLIENT')
+    private readonly orderEventsClient: ClientKafka,
   ) {}
 
   async onModuleInit() {
@@ -41,6 +43,7 @@ export class OrderService implements OnModuleInit {
     this.productClient.subscribeToResponseOf('product.decrementStock');
     this.productClient.subscribeToResponseOf('product.incrementStock');
     await this.productClient.connect();
+    await this.orderEventsClient.connect();
   }
 
   getHello(): string {
@@ -111,6 +114,16 @@ export class OrderService implements OnModuleInit {
 
         return createdOrder;
       });
+
+      try {
+        await this.orderEventsClient.emit('order.created', {
+          orderId: order.id,
+          totalAmount: order.totalAmount!.toString(), // Decimal → string
+        });
+        console.log('[OrderService] order.created event emitted');
+      } catch (err) {
+        console.error('[OrderService] Failed to emit order.created', err);
+      }
 
       return order;
     } catch (err) {
@@ -196,7 +209,12 @@ export class OrderService implements OnModuleInit {
   }
   private decrementStock(items: { productId: number; quantity: number }[]) {
     return firstValueFrom(
-      this.productClient.send('product.decrementStock', { items }),
+      this.productClient.send('product.decrementStock', { items }).pipe(
+        catchError((err) => {
+          console.error('Error decrementing stock:', err);
+          return throwError(() => new Error('Failed to decrement stock'));
+        }),
+      ),
     );
   }
 
