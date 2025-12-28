@@ -12,6 +12,16 @@ import { PrismaService } from './prisma.service';
       envFilePath: 'apps/payment/.env',
       ignoreEnvFile: false,
     }),
+    ClientsModule.register([
+      {
+        name: 'PAYMENT_EVENTS_CLIENT',
+        transport: Transport.KAFKA,
+        options: {
+          client: { brokers: ['localhost:9092'] },
+          producerOnlyMode: true,
+        },
+      },
+    ]),
   ],
   controllers: [PaymentController],
   providers: [PaymentService, PrismaService],

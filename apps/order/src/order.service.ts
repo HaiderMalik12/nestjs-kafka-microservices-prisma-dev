@@ -10,6 +10,10 @@ import { Prisma } from '@prisma/client';
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 import { PrismaService } from './prisma.service';
 import { OrderStatus } from './generated/prisma-client';
+import {
+  PaymentFailedEventPayload,
+  PaymentCompletedEventPayload,
+} from './events/payment-events';
 
 interface CreateOrderItemPayload {
   productId: number;
@@ -242,5 +246,49 @@ export class OrderService implements OnModuleInit {
       productId,
       quantity,
     }));
+  }
+
+  async handlePaymentCompleted(payload: PaymentCompletedEventPayload) {
+    const { orderId, paymentId } = payload;
+
+    console.log(
+      '[OrderService] Handling payment.completed for order:',
+      orderId,
+    );
+
+    // Update order status based on your enum design:
+    // Example: PENDING -> CREATED used as "confirmed"
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.CREATED, // treat this as CONFIRMED/PAID state
+      },
+    });
+
+    // 🔊 Emit order.completed (for other services)
+    // await this.orderEventsClient.emit('order.completed', {
+    //   orderId,
+    //   paymentId,
+    // });
+
+    console.log('[OrderService] Emitted order.completed:', {
+      orderId,
+      paymentId,
+    });
+  }
+  async handlePaymentFailed(payload: PaymentFailedEventPayload) {
+    const { orderId } = payload;
+
+    console.log('[OrderService] Handling payment.failed for order:', orderId);
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.CANCELLED,
+      },
+    });
+
+    // You *could* emit order.cancelled here if you want:
+    // await this.orderEventsClient.emit('order.cancelled', { orderId });
   }
 }

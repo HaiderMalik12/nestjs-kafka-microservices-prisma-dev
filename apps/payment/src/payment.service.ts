@@ -2,12 +2,14 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { Prisma, PaymentStatus } from './generated/prisma-client';
 import { OrderCreatedEventPayload } from './order-created.payload';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class PaymentService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
-    // @Inject('PAYMENT_EVENTS_CLIENT') private readonly paymentEventsClient: ClientKafka, // when you emit events
+    @Inject('PAYMENT_EVENTS_CLIENT')
+    private readonly paymentEventsClient: ClientKafka,
   ) {}
 
   async onModuleInit() {
@@ -62,6 +64,8 @@ export class PaymentService implements OnModuleInit {
       // 3️⃣ Call “gateway” (sync now, async/Stripe later)
       const result = await this.simulateCharge(amountDecimal);
 
+      console.log('result: simulateCharge', result);
+
       // 4️⃣ Update based on success/failure
       if (result.success) {
         payment = await this.prisma.payment.update({
@@ -77,6 +81,19 @@ export class PaymentService implements OnModuleInit {
 
         // later:
         // await this.paymentEventsClient.emit('payment.completed', {...});
+
+        // 🔊 Emit payment.completed
+        await this.paymentEventsClient.emit('payment.completed', {
+          orderId,
+          paymentId: payment.id,
+          amount: payment.amount.toString(),
+          transactionRef: payment.transactionRef,
+        });
+
+        console.log(
+          '[PaymentService] Emitted payment.completed for order:',
+          orderId,
+        );
       } else {
         payment = await this.prisma.payment.update({
           where: { orderId },
@@ -91,6 +108,18 @@ export class PaymentService implements OnModuleInit {
 
         // later:
         // await this.paymentEventsClient.emit('payment.failed', {...});
+        //🔊 Emit payment.failed
+        await this.paymentEventsClient.emit('payment.failed', {
+          orderId,
+          paymentId: payment.id,
+          amount: payment.amount.toString(),
+          errorMessage: payment.errorMessage,
+        });
+
+        console.log(
+          '[PaymentService] Emitted payment.failed for order:',
+          orderId,
+        );
       }
 
       return payment;
