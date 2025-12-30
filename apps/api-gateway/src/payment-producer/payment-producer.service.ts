@@ -4,9 +4,9 @@ import { firstValueFrom } from 'rxjs';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
 
 @Injectable()
-export class PaymentService {
+export class PaymentProducerService {
   constructor(
-    @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientKafka,
+    @Inject('KAFKA_PAYMENT_CLIENT') private readonly paymentClient: ClientKafka,
   ) {}
 
   async initiatePayment(dto: CreatePaymentDto) {

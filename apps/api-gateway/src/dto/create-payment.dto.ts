@@ -1,8 +1,8 @@
 import { IsInt, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class CreatePaymentDto {
-  @IsInt()
-  orderId: number;
+  @IsString()
+  orderId: string;
 
   @IsString()
   @IsIn(['stripe'])

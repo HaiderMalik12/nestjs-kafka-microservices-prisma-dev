@@ -4,9 +4,11 @@ import { ApiGatewayService } from './api-gateway.service';
 import { ClientKafka, ClientsModule, Transport } from '@nestjs/microservices';
 import { ProductProducerService } from './product-producer/product-producer.service';
 import { ProductProducerController } from './product-producer/product-producer.controller';
+import { PaymentProducerService } from './payment-producer/payment-producer.service';
 import { OrderProducerService } from './order/order.service';
 import { OrderController } from './order/order.controller';
 import { StripeWebhookController } from './payment-producer/stripe-webhook.controller';
+import { PaymentProducerController } from './payment-producer/payment-producer.controller';
 
 @Module({
   imports: [
@@ -57,8 +59,14 @@ import { StripeWebhookController } from './payment-producer/stripe-webhook.contr
     ProductProducerController,
     OrderController,
     StripeWebhookController,
+    PaymentProducerController,
   ],
-  providers: [ApiGatewayService, ProductProducerService, OrderProducerService],
+  providers: [
+    ApiGatewayService,
+    ProductProducerService,
+    OrderProducerService,
+    PaymentProducerService,
+  ],
 })
 export class ApiGatewayModule implements OnModuleInit {
   constructor(
