@@ -18,8 +18,10 @@ datasource db {
 
 enum PaymentStatus {
   PENDING
-  SUCCESS
+  REQUIRES_ACTION
+  SUCCEEDED
   FAILED
+  CANCELLED
 }
 
 model Payment {
@@ -27,6 +29,13 @@ model Payment {
   orderId   String        // reference to Order service's order ID (no FK across DBs)
   amount    Decimal       @db.Decimal(10, 2)
   status    PaymentStatus @default(PENDING)
+  currency String       // e.g., "USD", "EUR"
+
+
+  provider             String   // e.g., "stripe", "paypal"
+  stripePaymentIntentId String?
+  clientSecret String?  // for front-end to complete SCA if needed
+
 
   // Optional meta fields
   transactionRef String?    // external gateway reference

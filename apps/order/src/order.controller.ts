@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Logger } from '@nestjs/common';
 import {
   Ctx,
   EventPattern,
@@ -9,11 +9,14 @@ import {
 import { OrderService } from './order.service';
 import type {
   PaymentCompletedEventPayload,
+  PaymentFailedEvent,
   PaymentFailedEventPayload,
+  PaymentSucceededEvent,
 } from './events/payment-events';
 
 @Controller()
 export class OrderController {
+  private readonly logger = new Logger(OrderService.name);
   constructor(private readonly orderService: OrderService) {}
 
   @Get()
@@ -50,12 +53,28 @@ export class OrderController {
     await this.orderService.handlePaymentCompleted(data);
   }
 
-  @EventPattern('payment.failed')
-  async handlePaymentFailed(
-    @Payload() data: PaymentFailedEventPayload,
+  @MessagePattern('payment.succeeded')
+  async handlePaymentSucceeded(
+    @Payload() payload: PaymentSucceededEvent,
     @Ctx() context: KafkaContext,
   ) {
-    console.log('[Order] Received payment.failed:', data);
-    await this.orderService.handlePaymentFailed(data);
+    this.logger.log(
+      `[OrderMS] payment.succeeded for order ${payload.orderId}, payment ${payload.paymentId}`,
+    );
+
+    await this.orderService.markOrderAsPaid(payload.orderId);
+  }
+
+  // 👇 New: payment.failed event from Payment MS
+  @MessagePattern('payment.failed')
+  async handlePaymentFailed(
+    @Payload() payload: PaymentFailedEvent,
+    @Ctx() context: KafkaContext,
+  ) {
+    this.logger.warn(
+      `[OrderMS] payment.failed for order ${payload.orderId}, payment ${payload.paymentId}, reason: ${payload.failureMessage ?? 'N/A'}`,
+    );
+
+    await this.orderService.cancelOrderAndReleaseStock(payload.orderId);
   }
 }

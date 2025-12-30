@@ -21,6 +21,19 @@ import { PrismaService } from './prisma.service';
           producerOnlyMode: true,
         },
       },
+      {
+        name: 'ORDER_KAFKA_CLIENT',
+        transport: Transport.KAFKA,
+        options: {
+          client: {
+            clientId: 'order-kafka-client',
+            brokers: ['localhost:9092'],
+          },
+          consumer: {
+            groupId: 'payment-consumer',
+          },
+        },
+      },
     ]),
   ],
   controllers: [PaymentController],

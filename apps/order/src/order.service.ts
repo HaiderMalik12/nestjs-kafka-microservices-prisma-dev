@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
@@ -34,6 +35,8 @@ interface ProductSnapshot {
 
 @Injectable()
 export class OrderService implements OnModuleInit {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject('PRODUCT_SERVICE_CLIENT')
@@ -119,15 +122,15 @@ export class OrderService implements OnModuleInit {
         return createdOrder;
       });
 
-      try {
-        await this.orderEventsClient.emit('order.created', {
-          orderId: order.id,
-          totalAmount: order.totalAmount!.toString(), // Decimal → string
-        });
-        console.log('[OrderService] order.created event emitted');
-      } catch (err) {
-        console.error('[OrderService] Failed to emit order.created', err);
-      }
+      // try {
+      //   await this.orderEventsClient.emit('order.created', {
+      //     orderId: order.id,
+      //     totalAmount: order.totalAmount!.toString(), // Decimal → string
+      //   });
+      //   console.log('[OrderService] order.created event emitted');
+      // } catch (err) {
+      //   console.error('[OrderService] Failed to emit order.created', err);
+      // }
 
       return order;
     } catch (err) {
@@ -290,5 +293,105 @@ export class OrderService implements OnModuleInit {
 
     // You *could* emit order.cancelled here if you want:
     // await this.orderEventsClient.emit('order.cancelled', { orderId });
+  }
+
+  async markOrderAsPaid(orderId: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId.toString() },
+    });
+
+    if (!order) {
+      this.logger.error(
+        `[OrderService] Order ${orderId} not found on payment.succeeded`,
+      );
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    // Idempotency: if already PAID, do nothing
+    if (order.status === OrderStatus.PAID) {
+      this.logger.log(
+        `[OrderService] Order ${orderId} already PAID – skipping`,
+      );
+      return;
+    }
+
+    // If already cancelled, we probably don't want to resurrect it
+    if (order.status === OrderStatus.CANCELLED) {
+      this.logger.warn(
+        `[OrderService] Order ${orderId} is CANCELLED but got payment.succeeded – skipping`,
+      );
+      return;
+    }
+
+    await this.prisma.order.update({
+      where: { id: orderId.toString() },
+      data: { status: OrderStatus.PAID },
+    });
+
+    this.logger.log(`[OrderService] Order ${orderId} marked as PAID`);
+
+    // Optional: emit an "order.paid" event if you want other services to react
+    // this.orderEventsClient.emit('order.paid', { orderId });
+  }
+
+  async cancelOrderAndReleaseStock(orderId: number) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId.toString() },
+      include: { items: true },
+    });
+
+    if (!order) {
+      this.logger.error(
+        `[OrderService] Order ${orderId} not found on payment.failed`,
+      );
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    // Idempotency: if already CANCELLED, do nothing
+    if (order.status === OrderStatus.CANCELLED) {
+      this.logger.log(
+        `[OrderService] Order ${orderId} already CANCELLED – skipping`,
+      );
+      return;
+    }
+
+    // If already PAID, we probably shouldn't cancel + release stock
+    if (order.status === OrderStatus.PAID) {
+      this.logger.warn(
+        `[OrderService] Order ${orderId} is PAID but got payment.failed – skipping cancel`,
+      );
+      return;
+    }
+
+    // Build items array for stock increment
+    const items = order.items.map((item) => ({
+      productId: Number(item.productId),
+      quantity: item.quantity,
+    }));
+
+    // 1️⃣ Mark order as CANCELLED
+    await this.prisma.order.update({
+      where: { id: orderId.toString() },
+      data: { status: OrderStatus.CANCELLED },
+    });
+
+    this.logger.log(`[OrderService] Order ${orderId} marked as CANCELLED`);
+
+    // 2️⃣ Release stock via Product service
+    try {
+      await this.incrementStock(items); // you already have this method
+      this.logger.log(
+        `[OrderService] Stock restored for cancelled order ${orderId}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `[OrderService] Failed to restore stock for order ${orderId}`,
+        err,
+      );
+      // You may want to alert / log to external system here
+    }
+
+    // Optional: emit a domain event "order.cancelled"
+    // this.orderEventsClient.emit('order.cancelled', { orderId });
   }
 }
